@@ -23,7 +23,7 @@ while 1 :
 #    input = raw_input(">> ")
         # Python 3 users
     inp = input(">> ")
-    if inp == 'exit':
+    if inp == 'x':
         ser.close()
         exit()
     else:
@@ -34,7 +34,11 @@ while 1 :
         out = ''
         # let's wait one second before reading output (let's give device time to answer)
         #time.sleep(1)
+        i = 10
         ser.timeout = 1
+        while ser.inWaiting() == 0 and i > 0:
+            i = i - 1
+            time.sleep(.1)
         while ser.inWaiting() > 0:
             out += ser.readline().decode('ascii')
 
