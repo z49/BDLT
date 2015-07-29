@@ -10,6 +10,8 @@ import copy
 import readline
 import ast
 
+#This allows inline changing loaded config by filling
+#in the input prompt with editable lines
 def rlinput(prompt, prefill=''):
    readline.set_startup_hook(lambda: readline.insert_text(prefill))
    try:
@@ -17,9 +19,11 @@ def rlinput(prompt, prefill=''):
    finally:
       readline.set_startup_hook()
 
+#This class exists to store the device config read in through the serial port
+#It is stored in an ordered dictionary
 class Config:
     CONFIGSIZE = 44
-    fmt = 'Hh8h11sxbb5s5s'
+    #fmt = 'Hh8h11sxbb5s5s'
     st = struct.Struct('Hh8h11sxbb5s5s')
     #keys = ['ints','pulse','A','G','B','L','M','S','V','na','file','mode','channel','txaddr','rxaddr']
     keys = ['flags','pulse','accel','gyro','baro','light','magneto','sync','voltage','/na','file','mode','channel','txaddr','rxaddr']
@@ -53,30 +57,64 @@ ser = serial.Serial(
     bytesize=serial.EIGHTBITS
 )
 
+#This only to make sure the port is open, the above declaration should open it
 if not ser.isOpen():
 	ser.open()
 
-print('Enter your commands below.\r\nInsert "exit" to leave the application.')
-
+print('Enter your commands below.')
+helpstr = """Commands:
+help\t (h): This
+config\t(cf): Enters Config mode, nothing happens before this
+read\t(rd): Read config from device
+change\t(ch): Inline change loaded config
+write\t(wt): Write loaded config back to device
+commit\t (c): Commit changes to device, resetting it
+listen\t(ls): Print out all data from device
+empty\t (e): If serial buffers are full, run this to empty
+exit\t (x): exits
+Anything else will be sent straight to the device
+"""
+print(helpstr)
 ser.timeout = 5
 while 1 :
-    # get keyboard input
-#    input = raw_input(">> ")
-        # Python 3 users
     inp = input(">> ")
 
-    if inp == 'x':
+    if inp == 'exit' or inp == 'x':
         ser.close()
         exit()
 
-#change read config
-    elif inp == 'change':
+    elif inp == 'help' or inp == 'h':
+        print(helpstr)
+        continue
+
+    elif inp == 'config' or inp == 'cf':
+        ser.write('config\r'.encode())
+        i = 10
+        while ser.inWaiting() == 0 and i > 0:
+            i = i - 1
+            time.sleep(.1)
+
+    elif inp == 'commit' or inp == 'c':
+        ser.write('commit'.encode())
+        i = 10
+        while ser.inWaiting() == 0 and i > 0:
+            i = i - 1
+            time.sleep(.1)
+
+    elif 'listen' in inp or inp == 'ls':
+        print('Listening: ')
+        while 1:
+            data = ser.readline()
+            print(data.decode('ascii'),end='')
+
+#change read config, dont run before reading!
+    elif inp == 'change' or inp == 'ch':
         newinp = rlinput('edit config:\n',str(ldcfg))
         for line in newinp.splitlines():
             ldcfg.cfg[line[:line.find('\t')]] = ast.literal_eval(line[line.index(':')+2:])
 
-#Write config back to device
-    elif inp == 'write':
+#Write config back to device, dont run before reading!
+    elif inp == 'write' or inp == 'wt':
         data = ldcfg.repack()
         ser.write('wt\r'.encode('ascii'))
         ser.write(data)
@@ -91,7 +129,7 @@ while 1 :
         print(ser.readline().decode(),end='')
 
 #Read config from device
-    elif inp == 'read':
+    elif inp == 'read' or inp == 'rd':
         ser.write('rd\r'.encode('ascii'))
         out = ''
         i = 10
@@ -106,6 +144,12 @@ while 1 :
         ldcfg = Config(byts)
         print(ldcfg)
 
+    elif inp == 'empty' or inp == 'e':
+        while ser.inWaiting() > 0:
+            while ser.inWaiting() > 0:
+                byt = ser.read(1)
+            time.sleep(.2)
+
 #Send command straight to device.  Will later be deprecated, 
 #as all will be handled by client
     else:
@@ -118,10 +162,18 @@ while 1 :
         while ser.inWaiting() == 0 and i > 0:
             i = i - 1
             time.sleep(.1)
-        while ser.inWaiting() > 0:
-            while ser.inWaiting() > 0:
-                byt = ser.read(1)
-                out += byt.decode('ascii')
-            time.sleep(.1)
-        if out != '':
-            print(out,end='')
+#This waiting on the device occurs for every command
+#which is why it is on the level of the while(1)
+    out = ''
+    i = 100
+    while ser.inWaiting() > 0 and i > 0:
+        while ser.inWaiting() > 0 and i > 0:
+            byt = ser.read(1)
+            out += byt.decode('ascii')
+            i -= 1
+        time.sleep(.2)
+
+    if out != '':
+        print(out,end='')
+        if not out.endswith('\n'):
+            print('')
