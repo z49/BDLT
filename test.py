@@ -9,6 +9,25 @@ import binascii as b
 import copy
 import readline
 import ast
+import platform
+import glob
+
+def enum_serial_ports():
+    system_name = platform.system()
+    if(system_name == "Windows"):
+        available = []
+        for i in range(256):
+            try:
+                s = serial.Serial(i)
+                available.append(i)
+                s.close()
+            except serial.SerialException:
+                pass
+        return available
+    elif(system_name == "Darwin"):
+        return glob.glob('/dev/tty.usb*')
+    else:
+        return glob.glob('/dev/ttyUSB*')
 
 #This allows inline changing loaded config by filling
 #in the input prompt with editable lines
@@ -49,8 +68,14 @@ class Config:
 
 
 # configure the serial connections (the parameters differs on the device you are connecting to)
+
+print('Select serial port:')
+options = enum_serial_ports()
+for n in range(len(options)):
+    print(str(n+1) + '  : ' + str(options[n]))
+n = int(input('>> '))
 ser = serial.Serial(
-    port='/dev/ttyUSB'+sys.argv[1],
+    port=options[n-1],
     baudrate=9600,
     parity=serial.PARITY_ODD,
     stopbits=serial.STOPBITS_TWO,

@@ -32,7 +32,7 @@ class cmenu(object):
 
 	def cleanup(self):
 		crs.doupdate()
-		crs.reset_shell_mode()
+		crs.endwin()
 
 	def upKey(self):
 		if(self.pos == (len(self.options)-1)):
@@ -61,9 +61,9 @@ class cmenu(object):
 				for n in range(0,len(self.options)):
 					optn = self.options[n]
 					if n!=self.pos:
-						screen.addstr(5+n,4,str(n+1) + '\t' + self.options[n],self.n)
+						screen.addstr(5+n,4,str(n+1) + '\t' + str(self.options[n]),self.n)
 					else:
-						screen.addstr(5+n,4,str(n+1) + '\t' + self.options[n],self.h)
+						screen.addstr(5+n,4,str(n+1) + '\t' + str(self.options[n]),self.h)
 				screen.refresh()
 				ckey = screen.getch()
 				if ckey == crs.KEY_UP:
@@ -71,7 +71,7 @@ class cmenu(object):
 				if ckey == crs.KEY_DOWN:
 					self.downKey()
 			ckey = 0
-			#self.cleanup()
+			self.cleanup()
 			if(self.pos>=0 and self.pos < len(self.options)):
 				return self.options[self.pos]
 			else:
@@ -136,10 +136,10 @@ def main(scr):
 	win.border(0)
 
 	content = win.derwin(windim[0]-2,windim[1]-2,1,1)
-	#content.idlok(1)
+	content.idlok(1)
 	content.setscrreg(0,content.getmaxyx()[0]-1)
 	content.scrollok(1)
-	y = content.getmaxyx()[0]-1
+	y = content.getmaxyx()[0]-2
 	pos = 1
 	content.move(y,1)
 	win.noutrefresh()
@@ -157,16 +157,16 @@ def main(scr):
 				data = data.replace('\n','')
 				data = data.replace('\r','')
 				continue
-			content.addch(pos,y,ch)
+			content.addch(y,pos,ch)
 			win.touchwin()
 			win.noutrefresh()
 			content.noutrefresh()
 			pos += 1
-			if pos >= content.getmaxyx()[1]-1:
+			if pos >= content.getmaxyx()[1]-2:
 				pos = 1
 		data = ''
 
-		#crs.napms(5)
+		#crs.napms(100)
 		q = scr.getch()
 		if(q == crs.KEY_RESIZE):
 			dim = scr.getmaxyx()
@@ -195,6 +195,9 @@ def main(scr):
 			if x > 0:
 				x -= 1
 				win.move(y,x)
+		elif q == ord('p'):
+			while True:
+				content.scroll()
 		elif(q!=-1):
 			win.addch(chr(q))
 		
