@@ -67,13 +67,17 @@ class Config:
 
 
 
-# configure the serial connections (the parameters differs on the device you are connecting to)
+# configure the serial connections, enumerating valid and available serial ports for
+#the current operating system
 
 print('Select serial port:')
 options = enum_serial_ports()
 for n in range(len(options)):
-    print(str(n+1) + '  : ' + str(options[n]))
+    print(str(n+1) + ': ' + str(options[n]))
+print(str(len(options) + 1) + ': None of the above, exit')
 n = int(input('>> '))
+if(n-1 == len(options)):
+    exit()
 ser = serial.Serial(
     port=options[n-1],
     baudrate=9600,
